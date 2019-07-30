@@ -1,0 +1,68 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <cmath>
+#include <iostream>
+#include <vector>
+#include <map>
+#include <algorithm>
+#include <cassert>
+#include <unistd.h>
+
+#define all(c) (c).begin(), (c).end()
+#define iter(c) __typeof((c).begin())
+#define rep(i, n) for (int i = 0; i < (int)n; i++)
+#define tr(c, i) for (iter(c) i = (c).begin(); i != (c).end(); ++i)
+
+#define EPS 1e-06
+#define EPS_Q 0.0
+#define ITER_MAX 1000
+
+
+class Graph;
+typedef void(Graph::*fp)(std::vector<double>&, std::vector<double>&);
+
+class Graph{
+
+ private:
+  int V, E;
+  int number_community;
+  int t_max;
+  double original_E;
+  //double lambda_inf;
+
+  std::vector<int> nodes;
+  std::vector< std::pair<int, int> > edges;
+  std::vector< std::vector<int> > adj;
+  std::vector<int> col, row, ids, appear_time, community_id;
+  std::vector<double> k_in, k_out;
+
+ public:
+  static Graph readGraph(char filename[]);
+  void show_graph(int type);
+  void set_appeartime(char filename[]); 
+  void set_null_model(int type);
+
+  void product_undirected(std::vector<double> &s, std::vector<double> &new_s);
+  void product_directed(std::vector<double> &s, std::vector<double> &new_s);
+  void product_ordered(std::vector<double> &s, std::vector<double> &new_s);
+
+  std::vector<double> power_method(int type);
+  
+  Graph extract(int comm);
+  void divide_community(int comm, std::vector<double> &s);
+  double diff_modularity(int comm, std::vector<double> &s);
+
+  double innprod_k_out(std::vector<double> &k_out, std::vector<double> &x, int t);
+  double innprod_k_in(std::vector<double> &k_in, std::vector<double> &x, int t);
+  std::vector<double> multiply_k_out(std::vector<double> &k_out, double C, int t);
+  std::vector<double> multiply_k_in(std::vector<double> &k_in, double C, int t); 
+
+  double innprod(std::vector<double> &x, std::vector<double> &y);
+
+  int get_V();
+  int get_original_E();
+  int get_number_community();
+  void show_community_id();
+};
+

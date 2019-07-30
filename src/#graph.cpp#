@@ -1,0 +1,896 @@
+#include "graph.h"
+
+using namespace std;
+
+Graph
+Graph::readGraph(char filename[]) {
+ 
+  //leo: create a pointer to file
+  FILE *fp_r;
+  //leo: buffer
+  char buf[100];
+  //leo: return error if path does not exist
+  if((fp_r = fopen(filename, "r")) == NULL){
+    fprintf(stderr, "file open error.-%s\n", filename);
+    exit(EXIT_FAILURE);
+  }
+  
+  //graph object
+  Graph g;
+
+  g.V = 0;
+  g.E = 0;
+ 
+  int u, v;
+ 
+  //leo: read graph from file
+  while(fgets(buf, 100, fp_r) != NULL) {
+    
+    sscanf(buf, "%d %d", &u, &v);
+    
+	//number of edges
+    g.E++;
+    
+	//add node to V if node is new
+    if(u > g.V){
+      g.V = u;
+    }
+    if(v > g.V){
+      g.V = v;
+    }
+	//add edge connecting u to v to graph
+    g.edges.push_back(make_pair(u, v));
+  }
+  fclose(fp_r);
+  //??why do we increase the number of nodes at this point and not in while..
+  g.V++;
+  //??what is the difference of E to original_E and why is it a double? (weights?..)
+  g.original_E = (double)g.E;
+
+  // adjacency list (undirectionize)
+  g.adj.resize(g.V);
+  
+  //??what is tr?
+  tr(g.edges, it){
+    u = it->first, v = it->second;
+    g.adj[u].push_back(v);             
+    //?? no self loops?
+	if (u != v) g.adj[v].push_back(u);
+  }
+  rep(i, g.V){
+    sort(all(g.adj[i]));
+  }
+  
+  // sparse matrix representation
+  //leo:’¡¡not checked in detail yet
+  g.col.resize(2*g.E);
+  g.row.resize(g.V+1);
+  int count=0;
+  g.row[0] = 0;
+  rep(i, g.V){
+    rep(j, (int)g.adj[i].size()){
+      g.col[count] = g.adj[i][j];
+      count++;
+    }
+    g.row[i+1] = count;
+  }
+  
+  // set node ids
+  g.ids.resize(g.V);
+  rep(i,g.V){
+    g.ids[i] = i;
+  }
+  
+  // set initial community id
+  g.community_id.resize(g.V, 0);
+  g.number_community = 1;
+
+  return g;
+}
+
+
+////////////////////////
+void
+Graph::show_graph(int type){
+  fprintf(stderr, "V:%d\n", V);
+  fprintf(stderr, "E:%d original_E:%g\n", E, original_E);
+  /*
+  fprintf(stderr, "Adjacency list:\n");
+  rep(i, V){
+    fprintf(stderr, "[%d] ", ids[i]);
+    
+    rep(j, adj[i].size()){
+      fprintf(stderr, "%d ", ids[adj[i][j]]);
+    }
+    fprintf(stderr, "\n");
+  }
+  */
+  /*
+  rep(i, V){
+    int count = 0;
+    rep(j, V){
+      if(count == adj[i].size()){
+	fprintf(stderr, "0, ");
+      }
+      else{
+	
+	if(adj[i][count] == j){
+	  fprintf(stderr, "1, ");
+	  count++;
+	}
+	else{
+	  fprintf(stderr, "0, ");
+	}
+      }
+    }
+  }
+  fprintf(stderr, "\n");
+  */
+  /*
+  fprintf(stderr, "Sparse matrix representation:\n");
+  fprintf(stderr, "col:");
+  rep(j, col.size()){
+    fprintf(stderr, "%d ", col[j]);
+  }
+  fprintf(stderr, "\n");
+  fprintf(stderr, "row:");
+  rep(j, row.size()){
+    fprintf(stderr, "%d ", row[j]);
+  }
+  fprintf(stderr, "\n");
+  */
+  /*
+  if(k_in.size() == V){
+    fprintf(stderr, "degree sequence:\n");
+    if(type == 0){
+      rep(i, V){
+	//fprintf(stderr, "[%d] %d\n", i, (int)k_in[i]);
+	fprintf(stderr, "%d, ", (int)k_in[i]);
+      }
+      fprintf(stderr, "\n");
+    }
+    else{
+      rep(i, V){
+	fprintf(stderr, "[%d] %g %g\n", i, k_in[i], k_out[i]);
+      }
+    }
+  }
+  */
+  /*
+  if(appear_time.size() == V){
+    fprintf(stderr, "Appear time:\n");
+    rep(i, V){
+      fprintf(stderr, "[%d] %d\n", ids[i], appear_time[i]);
+    }
+  }
+  */
+  /*
+  rep(i, V){
+    rep(j, adj[i].size()){
+      printf("%d %d\n", i, adj[i][j]);
+    }
+  }
+  printf("\n");
+  */
+}
+
+
+/////////////////////////////////////
+void
+Graph::set_appeartime(char filename[]){
+
+  FILE *fp_r;
+  char buf[100];
+
+  if(strcmp(filename, "NA") == 0){
+    appear_time.resize(V);
+    rep(i, V){
+      appear_time[i] = i;
+    }
+    t_max = V;
+  }
+  else{
+    if((fp_r = fopen(filename, "r")) == NULL){
+      fprintf(stderr, "file open error-%s\n", filename);
+      exit(EXIT_FAILURE);
+    }
+    
+    appear_time.resize(V);
+    
+    int i = 0;
+    int tmp_t;
+    t_max = 0;
+    while(fgets(buf, 100, fp_r) != NULL){
+      sscanf(buf, "%d", &tmp_t);
+      appear_time[i] = tmp_t;
+      i++;
+      
+      if(t_max < tmp_t){
+	t_max = tmp_t;
+      }
+    }
+    fclose(fp_r);
+    
+    t_max++;
+    assert(i == V);
+  }
+}
+  
+  
+///////////////////////////////
+void
+Graph::set_null_model(int type){
+  
+  //calculates k(appa)^in and k(appa)^out for the different models
+
+  assert((type==0)||(type==1)||(type==2));
+
+  k_in.resize(V, 0.0);
+  k_out.resize(V, 0.0);
+  
+  if(type == 0){
+    rep(i, V){
+      k_in[i] = (double)adj[i].size(); // degree after discarding link directions
+      k_out[i] = k_in[i];
+      //fprintf(stderr, "[%d] k_in:%d k_out:%d\n", i, (int)k_in[i], (int)k_out[i]);
+    }
+  }
+  else if(type == 1){
+    rep(e, (int)edges.size()){
+      k_in[edges[e].second]++; // in-degree
+      k_out[edges[e].first]++; // out-degree
+    }
+    /*
+    rep(i, V){
+      fprintf(stderr, "[%d] k_in:%d k_out:%d\n", i, (int)k_in[i], (int)k_out[i]);
+    }
+    */
+  }
+  else if(type == 2){
+    //fprintf(stderr, "t_max:%d\n", t_max);
+
+    // ordered: null model == modified in / out-degree
+    rep(e, (int)edges.size()){
+      k_in[edges[e].second]++; // in-degree
+      k_out[edges[e].first]++; // out-degree
+    }
+    /*
+    rep(i, V){
+      fprintf(stderr, "[%d] k_in:%d k_out:%d\n", i, (int)k_in[i], (int)k_out[i]);
+    }
+    */
+    int t;
+
+    vector<double> sum_k_in(t_max, 0), sum_k_out(t_max, 0);
+    vector<double> mu(t_max, 0.0), lambda(t_max, 0.0);
+ 
+    //calculate mu, lambda and sum_k
+    rep(i, V){
+      double value = k_in[i] - k_out[i];
+      for(t=appear_time[i]+1; t<t_max; t++){
+	    mu[t] += value;
+    	lambda[t] += value;
+      }
+
+      if(appear_time[i] > 0){
+	    lambda[appear_time[i]] -= k_out[i];
+      }
+      
+      sum_k_in[appear_time[i]] += k_in[i];
+      sum_k_out[appear_time[i]] += k_out[i];
+    }
+    
+    //fprintf(stderr, "t mu lambda sum_k_in sum_k_out\n");
+    rep(t, t_max){
+      //fprintf(stderr, "t:%d mu:%g lambda:%g\n", t, mu[t], lambda[t]);
+      //printf("%d %g %g %g %g\n", t, mu[t], lambda[t], sum_k_in[t], sum_k_out[t]);
+      //fprintf(stderr, "t:%d sum_k_in:%g sum_k_out:%g\n", t, sum_k_in[t], sum_k_out[t]);
+
+      if((t != 0)&&(t != t_max-1)&&(lambda[t] == 0)){
+	fprintf(stderr, "there is a zero flux point at t = %d\n", t);
+	exit(EXIT_FAILURE);
+      }
+    }
+
+    vector<double> a(t_max), b(t_max);    
+    
+    if(t_max == 1){
+      fprintf(stderr, "t_max should be equal to or larger than 2.\n");
+      exit(EXIT_FAILURE);
+    }
+    else if(t_max > 2){
+      // if t_max == 2, the network is a directed bipartite graph
+      // in which all the directed links go from nodes at t=1 to nodes at t=0.
+      // the null model is equivalent to that in the directed case.
+      
+	  ///??didn't quite understand why a and b can be calculated this way
+      /*
+	  a[0] = 1.0;
+      for(t=1; t<t_max-1; t++){
+	    a[t] = a[t-1]*(1.0 + sum_k_out[t]/lambda[t]);
+      }
+      a[t_max-1] = 0.0;
+
+      b[t_max-1] = 1.0;
+      for(t=t_max-2; t>=1; t--){
+	    b[t] = b[t+1]*(1.0 + sum_k_in[t]/lambda[t]);
+      }
+      b[0] = 0.0;
+	  */
+	  
+	  // a is f(1,l_i) and b is f(l_i,L)
+	  a[0] = 1.0;
+      for(t=1; t<t_max-1; t++){
+	    a[t] = a[t-1]*(1.0 - sum_k_out[t]/mu[t]);
+      }
+      a[t_max-1] = 0.0;
+
+      b[t_max-1] = 1.0;
+      for(t=t_max-2; t>=1; t--){
+	    b[t] = b[t+1]*(1.0 - sum_k_out[t]/mu[t]);
+      }
+      b[0] = 0.0;
+	  
+	  for(t=1; t<t_max-1; t++){
+	  	b[t] = b[t]/mu[t_max-1];
+		a[t] = a[t]/mu[t];
+	  }
+	  
+	  
+      /*
+      for(t=0;t<t_max;t++){
+	  fprintf(stderr, "t:%d a:%g b:%g\n", t, a[t], b[t]);
+      }
+      */
+
+      //double prod_lambda = 1.0;
+      //double prod_mu = mu[t_max-1];
+      double f1n = 1.0/mu[t_max-1];
+      for(t=1; t<t_max-1; t++){
+	    f1n *= (lambda[t]/mu[t]);
+      }
+      ///f1n *= original_E; //this is canceled out below in product_order so essentially we don't need it here
+      //printf(stderr, "original_E:%g prod_lambda:%g prod_mu:%g\n", original_E, prod_lambda, prod_mu);
+      //fprintf(stderr, "f1n:%g\n", f1n);
+
+      rep(i, V){
+	    ///k_in[i] = f1n*a[appear_time[i]]*k_in[i];
+		k_in[i] = b[appear_time[i]]*k_in[i]/f1n;
+	    k_out[i] = a[appear_time[i]]*k_out[i];
+        //fprintf(stderr, "[%d] k_in:%g k_out:%g\n", i, k_in[i], k_out[i]);
+      }
+    }
+	///debug
+	///fprintf(stderr, "[%d] k_in:%g k_out:%g\n", 1, k_in[10322], k_out[11191]); 
+  }
+
+  // calculate the lower bound of eigenvalues of the modularity matrix
+  /*
+  if(type == 0){
+    lambda_inf = -2.0*(*max_element(k_in.begin(), k_in.end());
+  }
+  else if(type == 1){
+    lambda_inf = -2.0*(*max_element(k_in.begin(), k_in.end()));
+  }
+  else if(type == 2){
+    vector<double> s0(V, 1.0), s1(V);
+    product_ordered(s0, s1);
+    
+    rep(i, V){
+      s1[i] -= 2.0*k_in[i];
+    }
+
+    lambda_inf = *min_element(s1.begin(), s1.end());
+  }
+  */
+  // for check
+  //lambda_inf = 0.0;
+  //fprintf(stderr, "lambda_inf:%g\n", lambda_inf);
+}
+
+
+////////////////////////////////
+vector<double>
+Graph::power_method(int type){
+   
+    //calculate the dominant eigenvector of B (of the corresponding method) 
+  
+  vector<double> new_s(V);
+  vector<double> old_s(V);
+  
+    //?? probably product is pointer to function but why does this declaration work?
+  fp product;
+  if(type == 0){
+    product = &Graph::product_undirected;
+  }
+  else if(type == 1){
+    product = &Graph::product_directed;
+  } 
+  else if(type == 2){
+    product = &Graph::product_ordered;
+  } 
+  
+  double norm;
+    //??lambda_old does not seem to be used
+  double lambda_inf,lambda_old, lambda_new;
+  lambda_new = 0.0;
+
+  do{
+
+    lambda_inf = lambda_new;
+    //fprintf(stderr, "lambda_inf:%g\n", lambda_inf);
+
+    rep(i, V){
+      //old_s[i] = 2.0*(double)random()/(RAND_MAX+1.0)-1.0;
+        //?? why is it multiplied with 2?
+      old_s[i] = 2.0*(random() % 2) -1.0;
+    }
+  
+    int iter = 0;
+ 
+    lambda_old = 0.0;
+    lambda_new = 0.0;
+    
+    do{
+      lambda_old = lambda_new;
+      
+      //fprintf(stderr, "iter:%d\n", iter);
+      
+      /*
+	fprintf(stderr, "old_s:");
+	rep(i, min(V,20)){
+	fprintf(stderr, "%g ", old_s[i]);
+	}     
+	fprintf(stderr, "\n");
+      */
+      // new_s = (A - P)*old_s
+      
+	  ///leo: this points to the objects whose member function is being excecuted, i.e. in this case the graph
+	  (this->*product)(old_s, new_s);
+	  //Graph::product_ordered(old_s, new_s);
+	  /*
+	if(iter == 0){
+	fprintf(stderr, "null model matrix:\n");
+	rep(i, V){
+	rep(j, V){
+	if(i < j){
+	fprintf(stderr, "%g, ", k_in[i]*k_out[j]/original_E);
+	}
+	else{
+	fprintf(stderr, "0, ");	   
+	}
+	}
+	}
+	fprintf(stderr, "\n");
+	}
+      */
+      // new_s = (A - lambda_inf*I - P)*old_s
+      if(lambda_inf != 0.0){
+    	rep(i, V){
+	      new_s[i] -= (lambda_inf*old_s[i]);
+	    }
+      }
+      // approx eigenvalue
+      lambda_new = innprod(new_s, new_s) / innprod(old_s, new_s);
+      //fprintf(stderr, "lambda_old:%g lambda_new:%g\n", lambda_old, lambda_new);
+      //fprintf(stderr, "%g\n", lambda_new);
+    
+      // normalize new_s and copy new_s to s
+      norm = sqrt(innprod(new_s, new_s));
+      //fprintf(stderr, "norm:%g\n", norm);
+      if(norm == 0.0){
+	break;
+      }
+      else{
+	//fprintf(stderr, "new_s:");
+	rep(i, V){
+	  new_s[i] /= norm;
+	  //fprintf(stderr, "%g ", new_s[i]);
+	  old_s[i] = new_s[i];
+	}
+	//fprintf(stderr, "\n");
+      }
+
+      iter++;
+    
+      //}while((fabs(lambda_new - lambda_old) > EPS)&&(iter < ITER_MAX));
+    }while(iter < ITER_MAX);
+
+  }while(lambda_new < 0.0);
+
+  ///debug
+  ///fprintf(stderr, "%f\n", lambda_old);
+  
+  return new_s;
+}
+
+
+/////////////////////////////////////////////////////
+void
+Graph::product_undirected(vector<double> &s, vector<double> &new_s){
+    
+    //leo: calculate new_s = Bs (= As-k(k^Ts)/2M)	
+  
+    //leo: if false then error is returned
+  assert((int)s.size() == V);
+ 
+  double kx = 0.0;
+  rep(i, V){
+    new_s[i] = 0.0;
+    
+    // Ax
+    for(int j=row[i]; j<row[i+1]; j++){
+      new_s[i] += s[col[j]];
+    }
+
+    //(k^T s)
+    kx += k_out[i]*s[i];
+  }
+  
+  // k*(k^T s)/(2*E)
+  double C = kx/(2.0*original_E);
+  rep(i, V){
+    new_s[i] -= (C*k_out[i]);
+  }
+}
+
+
+//////////////////////////////////////////////
+void
+Graph::product_directed(vector<double> &s, vector<double> &new_s){
+  //leo: s is old_s, new_s is new_s
+  //leo: this calculates  (A+A^T)*s+k_in*(k_out^T s)/M + k_out*(k_in^T s)/M
+  
+  assert((int)s.size() == V);
+
+  new_s.resize(V, 0.0);
+
+  double k_out_x, k_in_x;
+  k_out_x = k_in_x = 0.0;
+  rep(i, V){
+    // Ax
+	  //leo: new_s=A*s (possible to write in this form because A has only entries in {0,1})
+    new_s[i] = 0.0;
+    for(int j=row[i]; j< row[i+1]; j++){
+      new_s[i] += s[col[j]];
+    }
+
+    // k_in*(k_out^T s) + k_out*(k_in^T s)
+    k_out_x += k_out[i]*s[i];
+    k_in_x += k_in[i]*s[i]; 
+  }
+  
+  double C_out = k_out_x/original_E;
+  double C_in = k_in_x/original_E;
+  rep(i, V){
+    new_s[i] -= (k_in[i]*C_out + k_out[i]*C_in);
+  }
+}
+
+
+/////////////////////////////////////////////
+void
+Graph::product_ordered(vector<double> &s, vector<double> &new_s){
+  //leo: this calculates Ax+sum(kappa^in(l)(kappa^out(l)^T x)) (l layer)
+  
+  
+  assert((int)s.size() == V);
+
+  // sum_{t=1}^{t/max} (k_in(t)*(k_out(t)^T s) + k_out(t)*(k_in(t)^T s)
+  double k_out_x, k_in_x;
+  vector<double> p(V, 0.0);
+  //vector<double> v1(V), v2(V);
+  int t;
+  int t_min = *min_element(appear_time.begin(), appear_time.end());
+ 
+  for(t=t_min; t<t_max-1; t++){
+    
+    // inner product (k_out(t)^T s) and (k_in(t)^T s)
+    k_out_x = k_in_x = 0.0;
+    rep(i, V){
+      if(appear_time[i] > t){
+    	k_out_x += k_out[i]*s[i];
+      }
+      else if(appear_time[i] == t){
+        k_in_x += k_in[i]*s[i];
+      }
+    }
+
+    // vector multiplied by a scalar
+    // (k_in(t)*(k_out(t)^T s) and k_out(t)*(k_in(t)^T s)
+    rep(i, V){
+      if(appear_time[i] > t){
+        p[i] += k_out[i]*k_in_x;
+      }
+      else if(appear_time[i] == t){
+        p[i] += k_in[i]*k_out_x;
+      }
+    }
+  }
+
+  rep(i, V){
+    new_s[i] = 0.0;
+    // Ax
+    for(int j=row[i]; j< row[i+1]; j++){
+      new_s[i] += s[col[j]];
+    }
+
+	   //leo devided by original_E because k_in was multiplied by original_E in null model
+    // sum_{t=0}^{t_max-2} (k_in(t)*(k_out(t)^T s) + k_out(t)*(k_in(t)^T s)
+    //new_s[i] -= p[i]/original_E;
+	new_s[i] -= p[i];
+  }
+}
+
+
+//////////////////////////////////////////
+double
+Graph::innprod_k_out(std::vector<double> &k_out, std::vector<double> &x, int t){
+  // (k_out(t))^T x
+  assert((0 <=t)&&(t < t_max-1));  
+  double res = 0.0;
+  rep(i, V){
+    if(appear_time[i] > t){
+      res += k_out[i]*x[i];
+    }
+  }
+  return res;
+}
+
+
+/////////////////////////////////////////
+double
+Graph::innprod_k_in(std::vector<double> &k_in, std::vector<double> &x, int t){
+  // (k_in(t))^T x
+  assert((0 <=t)&&(t < t_max-1));
+  double res = 0.0;
+  rep(i, V){
+    if(appear_time[i] == t){
+      res += k_in[i]*x[i];
+    }
+  }
+  return res;
+}
+
+
+///////////////////////////////////
+vector<double>
+Graph::multiply_k_out(std::vector<double> &k_out, double C, int t){
+  // (k_out(t))*C
+  assert((0 <=t)&&(t < t_max-1));
+  vector<double> res(V, 0.0);
+  rep(i, V){
+    if(appear_time[i] > t){
+      res[i] = k_out[i]*C;
+    }
+  }
+  return res;
+}
+
+
+/////////////////////////////////
+vector<double>
+Graph::multiply_k_in(std::vector<double> &k_in, double C, int t){
+  // (k_in(t))*C
+  assert((0 <=t)&&(t < t_max-1));
+  vector<double> res(V, 0.0);
+  rep(i, V){
+    if(appear_time[i] == t){
+      res[i] = k_in[i]*C;
+    }
+  }
+  return res;
+}
+
+
+/////////////////////////
+Graph
+Graph::extract(int comm){
+
+  Graph tmp_g;
+
+  // Node i in the original network has index j in the extracted network.  
+  map<int, int> new_index;
+  vector<int> old_index(this->V);
+  tmp_g.ids.resize(this->V);
+  tmp_g.V = 0;
+  rep(i, this->V){
+    if(this->community_id[i] == comm){
+      tmp_g.ids[tmp_g.V] = this->ids[i];
+      new_index[i] = tmp_g.V;
+      old_index[tmp_g.V] = i;
+      tmp_g.V++;
+    }
+  }
+  old_index.resize(tmp_g.V);
+  tmp_g.ids.resize(tmp_g.V);
+    
+  // copy a part of adjacency list
+  // set E
+  tmp_g.adj.resize(tmp_g.V);
+  tmp_g.original_E = this->original_E;
+  tmp_g.E = 0;
+  vector<int> res;
+  rep(i, tmp_g.V){
+    res.clear();
+
+    set_intersection(this->adj[old_index[i]].begin() , this->adj[old_index[i]].end(), old_index.begin(), old_index.end(), back_inserter(res));
+    
+    tmp_g.adj[i].resize((int)res.size());
+    rep(j, res.size()){
+      tmp_g.adj[i][j] = new_index[res[j]];
+      assert((0 <= new_index[res[j]])&&( new_index[res[j]] < tmp_g.V));
+    }
+
+    tmp_g.E += tmp_g.adj[i].size();
+  }
+  assert(tmp_g.E % 2 == 0);
+  tmp_g.E /= 2;
+  
+  // convert the adjacency list to a sparse matrix representation
+  // copy community_id, k_out, k_in
+  tmp_g.col.resize(2*tmp_g.E);
+  tmp_g.row.resize(tmp_g.V+1);
+  tmp_g.community_id.resize(tmp_g.V);
+  tmp_g.k_in.resize(tmp_g.V);
+  tmp_g.k_out.resize(tmp_g.V);
+  int count=0;
+  tmp_g.row[0] = 0;
+  rep(i, tmp_g.V){
+    rep(j, (int)tmp_g.adj[i].size()){
+      tmp_g.col[count] = tmp_g.adj[i][j];
+      count++;
+    }
+    tmp_g.row[i+1] = count;
+
+    tmp_g.community_id[i] = comm;
+    
+    tmp_g.k_in[i] = this->k_in[old_index[i]];
+    tmp_g.k_out[i] = this->k_out[old_index[i]];
+  }  
+
+  // copy a part of appear_time
+  if((int)this->appear_time.size() == this->V){
+    tmp_g.t_max = 0;
+    tmp_g.appear_time.resize(tmp_g.V); 
+    rep(i, tmp_g.V){  
+      tmp_g.appear_time[i] = this->appear_time[old_index[i]];
+      if(tmp_g.t_max < tmp_g.appear_time[i]){
+	tmp_g.t_max = tmp_g.appear_time[i];
+      }
+    }
+    tmp_g.t_max++;
+  }
+  
+  // copy lambda_inf
+  //tmp_g.lambda_inf = this->lambda_inf;
+
+  // set number_community
+  tmp_g.number_community = 1;
+
+  return tmp_g;
+}
+
+
+////////////////////////////////////////////
+void
+Graph::divide_community(int comm, vector<double> &s){
+  
+  // Community comm is divided into two communities:
+  // comm and number_community+1
+  // Then number_community is inclimented with unity.
+  vector<int> comm_member_ids((int)s.size());
+  int count = 0;
+  double sum_s = 0;
+
+  rep(i, V){
+    if(community_id[i] == comm){
+      comm_member_ids[count] = i;
+      count++;
+    }
+
+    sum_s += (s[i]/fabs(s[i]));
+  }
+  assert(comm_member_ids.size() == s.size());
+
+  // the larger part is always assigned with a smaller community id.
+  int sign_s = (int)(sum_s/fabs(sum_s));
+
+  rep(i, s.size()){
+    if(sign_s*s[i] > 0.0){
+      community_id[comm_member_ids[i]] = comm;
+    }
+    else{
+      community_id[comm_member_ids[i]] = number_community;
+    }
+  }
+  
+  number_community++;
+}
+
+
+//////////////////////////////////
+double
+Graph::diff_modularity(int type, vector<double> &s){
+    //leo: this calculates the modularity
+    //leo: s is the dominant eigenvector of B
+  
+    //leo: "approximate" the dominant eigenvector such that it only has entries in {-1,1}
+  rep(i, V){
+    if(s[i] > 0.0){
+      s[i] = 1.0;
+    }
+    else{
+      s[i] = -1.0;
+    }
+  }
+  
+  vector<double> u((int)s.size(), 1.0);
+  vector<double> st((int)s.size()), ut((int)s.size());
+  
+  if(type == 0){
+    // undirected
+	  //leo: st = B*s
+    product_undirected(s, st);
+	  //leo: ut = B*u (=B*1)
+    product_undirected(u, ut);
+  }
+  else if(type == 1){
+    // directed
+    product_directed(s, st);
+    product_directed(u, ut);
+  }
+  else if(type == 2){
+    // ordered
+    product_ordered(s, st);
+    product_ordered(u, ut);
+  }
+
+    //leo: res = s^T*B*s - 1^T * B * 1
+  double res = (innprod(s, st) - innprod(u, ut));
+  //fprintf(stderr, "innprod(s,st):%g innprod(u, ut):%g\n", innprod(s, st), innprod(u, ut));
+  
+  return res;
+}
+
+
+////////////////////////////////
+double
+Graph::innprod(vector<double> &x, vector<double> &y){
+  assert((int)x.size() == (int)y.size());
+  double res = 0.0;
+  rep(i, (int)x.size()){
+    res += x[i]*y[i];
+  }
+  return res;
+}
+
+
+//////////////////////////
+int
+Graph::get_V(){
+  return V;
+}
+
+
+//////////////////////////
+int
+Graph::get_original_E(){
+  return original_E;
+}
+
+
+//////////////////////////
+int
+Graph::get_number_community(){
+  return number_community;
+}
+
+
+///////////////////////////
+void
+Graph::show_community_id(){  
+  rep(i, V){
+    printf("%d\n", community_id[i]);
+  }
+}
