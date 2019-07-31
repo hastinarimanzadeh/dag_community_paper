@@ -1,8 +1,8 @@
 CC=g++
-#CFLAGS= -O3 -Wall -std=c++11 -I/usr/local/Cellar/igraph/0.7.1_6/include/igraph 
-#LDFLAGS= -lm -Wall -L/usr/local/lib -ligraph -lglpk 
-CFLAGS= -O3 -Wall -std=c++11
-LDFLAGS= -lm -Wall -L/usr/local/lib
+CFLAGS= -O3 -Wall -std=c++11 -I/usr/local/Cellar/igraph/0.7.1_6/include/igraph 
+LDFLAGS= -lm -Wall -L/usr/local/lib -ligraph -lglpk 
+#CFLAGS= -O3 -Wall -std=c++11
+#LDFLAGS= -lm -Wall -L/usr/local/lib
 EXEC= spectral post_processing modularity optimal optimal_community
 
 all: $(EXEC)

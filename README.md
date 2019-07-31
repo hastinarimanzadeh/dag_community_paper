@@ -29,7 +29,3 @@ There are five binaries,
 There is an R script in Rfunctions/pre\_proc\_graph.R which should prepare the required input files.
 Output is edgelist.txt and layer.txt.
 
-## Plotting
-
-The R script ./Rfunctions/plot\_ordered\_graph.R generates a visualisation of the inferred communities of the network.
-

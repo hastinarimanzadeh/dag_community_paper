@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Prepare input data
-Rscript ./example_hepth.R
+Rscript ./prepare_hepth.R
 
 # Infer communities using spectral method
 ../src/spectral edgelist.txt 2 layer.txt 1 > hepth.membership
