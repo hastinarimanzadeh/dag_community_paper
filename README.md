@@ -9,6 +9,9 @@ paper: [European Physical Journal B 88, 203 (2015)](http://link.springer.com/art
 2. Open src/Makefile and adjust path to igraph
 3. Change to directory src and type `make` 
 
+Alternatively, if igraph and glpk are unavailable, remove -ligraph and -lglpk.<br/>
+These are only required for optimal and optimal\_community, so you should be able to compile everything else.
+
 ## Usage
 
 See ./src/readme.txt for details.
@@ -18,12 +21,13 @@ There are five binaries,
  - spectral: implements the spectral method for community detection
  - post\_processing: a heuristic post\_processing algorithm for improving modularity by reassigning communities of individual nodes
  - modularity: calculates the modularity of a community assignment
- - optional: optimal assignment of nodes to communities (slow)
+ - optimal: optimal assignment of nodes to communities (slow)
  - optimal\_community: same as optimal but different implementation (slow)
 
 ## Pre-processing
 
-There is an R script in Rfunctions/pre\_proc\_graph.R which should prepare the edgelist for the input network.
+There is an R script in Rfunctions/pre\_proc\_graph.R which should prepare the required input files.
+Output is edgelist.txt and layer.txt.
 
 ## Plotting
 

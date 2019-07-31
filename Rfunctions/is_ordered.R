@@ -1,6 +1,6 @@
 
 is_ordered <- function(el){
-  print(head(el))
+  #print(head(el))
   
   layer <- max(el[,1],el[,2]):min(el[,1],el[,2]);
   
@@ -13,8 +13,8 @@ is_ordered <- function(el){
   
   foo <- which(comp == F)
   goo <- which(comp == T)
-  if(length(foo) < length(goo)) print(foo)
-  if(length(foo) >= length(goo)) print(goo)
+  #if(length(foo) < length(goo)) print(foo)
+  #if(length(foo) >= length(goo)) print(goo)
 
   if((checkF == T) && (checkT == T)) return(F);
   return(T)
