@@ -10,7 +10,7 @@ Rscript ./prepare_hepth.R
 ../src/post_processing edgelist.txt 2 layer.txt hepth.membership 1 > hepth.membership.postprocessed
 
 # Calculate modularity of partition
-echo "Modularity:"
+echo "t2"
 ../src/modularity edgelist.txt 0 layer.txt hepth.membership.postprocessed
 ../src/modularity edgelist.txt 1 layer.txt hepth.membership.postprocessed
 ../src/modularity edgelist.txt 2 layer.txt hepth.membership.postprocessed
