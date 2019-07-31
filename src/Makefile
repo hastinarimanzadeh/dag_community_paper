@@ -1,7 +1,6 @@
 CC=g++
-#CFLAGS= -O3 -Wall -std=c++11 -Dsrandom=srand -Drandom=rand -I/usr/include/igraph-0.7.1/include -I/usr/include/igraph-0.7.1/optional/glpk
-CFLAGS= -O3 -Wall -std=c++11 -Dsrandom=srand -Drandom=rand -I/local/Cellar/igraph/0.7.1/include #-I/usr/include/igraph-0.7.1/optional/glpk
-LDFLAGS= -lm -Wall -L/usr/local/lib -ligraph
+CFLAGS= -O3 -Wall -std=c++11 -I/usr/local/Cellar/igraph/0.7.1_6/include/igraph 
+LDFLAGS= -lm -Wall -L/usr/local/lib -ligraph -lglpk 
 EXEC= spectral post_processing modularity optimal optimal_community
 
 all: $(EXEC)
@@ -16,7 +15,6 @@ optimal : graph.o optimal.o
 	$(CC) -o $@ $^ $(LDFLAGS) 	
 optimal_community : graph.o optimal.o 
 	$(CC) -o $@ $^ $(LDFLAGS) 	
-
 
 ##########################################
 # Generic rules

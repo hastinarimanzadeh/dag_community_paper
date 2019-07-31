@@ -31,8 +31,8 @@ This code cannot handle graphs with such layers.
 Pre processing networks (DAGs) for this code:
 There is a R function in the respective folder (pre_proc_graph.R), which checks whether the graph 
 is a DAG and then creates layers for nodes using a leaf removal algorithm. It
-also sorts node indices such that they satisfy the condition of layers.
-they are enumerated also to respect layer  
+also sorts node indices such that they satisfy the condition of layers and are enumerated to respect
+the layered structure.  
 
 Plotting community assignment of DAGs:
 There is a R function in the respective folder (plot_ordered_graph), which

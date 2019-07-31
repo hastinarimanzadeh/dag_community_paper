@@ -1,24 +1,17 @@
 #include "graph.h"
 #include <igraph.h>
 #include <fstream> 
-#include "igraph_interface.h" //?
-#include "igraph_structural.h"  //?
-#include "igraph_community.h"  //?
-#include "igraph_error.h"  //?
+#include "igraph_interface.h" 
+#include "igraph_structural.h"  
+#include "igraph_community.h"  
+#include "igraph_error.h"  
 //#include "igraph_glpk_support.h"
 //#include "igraph_interrupt.h"  
-#include "igraph_centrality.h" //?
-#include "config.h"  //?
+#include "igraph_centrality.h" 
+//#include "config.h"  
 #include <glpk.h> //solver
 
 using namespace std;
-
-
-
-
-
-
-
 
 
 int set_layer(char filename[],igraph_integer_t no_of_nodes,vector<int> &layer){
