@@ -210,6 +210,7 @@ Graph::set_community_ids(char filename[]){
 
     sscanf(buf, "%d", &comm_index);
     community_id[count] = comm_index;
+    //fprintf(stderr, "count= %d, comm_index=%d \n", count, comm_index);
     count++;  
     if(comm_index > max_comm_index) max_comm_index = comm_index;
   }
