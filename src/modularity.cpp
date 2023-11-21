@@ -73,7 +73,7 @@ int main(int argc, char* argv[]){
   //fprintf(stderr,"comm = %d \n",community_index[1]);
   fprintf(stderr,"Number of communities = %d \n", max_comm_index + 1);
   fprintf(stderr,"Q = %Lf \n", Q);
-  fprintf(stdout,"%Lf\n", Q);
+  fprintf(stdout,"%.7Le\n", Q);
  
   
 }
